@@ -24,11 +24,11 @@ find_package(Boost REQUIRED COMPONENTS headers)
 
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-if(NOT DEFINED CMAKE_CXX_STANDARD)
-    set(CMAKE_CXX_STANDARD 14)
-elseif(CMAKE_CXX_STANDARD LESS 14)
-    message(FATAL_ERROR "Boost.DI requires at least C++14")
-endif()
+# if(NOT DEFINED CMAKE_CXX_STANDARD)
+    set(CMAKE_CXX_STANDARD 17)
+# elseif(CMAKE_CXX_STANDARD LESS 14)
+#     message(FATAL_ERROR "Boost.DI requires at least C++14")
+# endif()
 
 add_library(${PROJECT_NAME} INTERFACE)
 target_include_directories(
