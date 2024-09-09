@@ -39,7 +39,22 @@ namespace di = boost::di;
   cl /std:c++14 /Ox /W3 file.cpp
   ```
 
-#### Quick guide - Create object graph
+#### Quick guide - Create object graph (创建对象图)
+Boost.DI 库被设计为一个便于创建对象图的工具，而创建对象图是依赖注入设计模式的核心内容。
+
+一个**对象图**是一个由各种对象实例和这些实例之间的构造器或方法引用所构成的图。在一个复杂的应用程序中，这些对象之间的关系也可能会非常复杂，这些关系可能会包括一些关键的运行时行为。
+
+这就是`boost::di::create<T>()`方法的核心作用——创建这种类型的对象实例，并递归地解析和满足其所有的依赖，然后返回新创建的对象实例。
+
+例如，当你调用 `auto object = injector.create<MyClass>()`，Boost.DI 库会：
+
+1. 查看 `MyClass` 的构造函数需要哪些参数。
+2. 如果这些参数类型也已经在注入器配置中定义，就会创建它们的实例，并且也会递归地解决这些类型的依赖。
+3. 使用解决的依赖创建 `MyClass` 的实例。
+
+重要的是，Boost.DI 会自动处理对象之间的依赖关系，并且能够调整对象的创建顺序以确保依赖的正确解析。
+
+因此，Boost.DI 的 `create` 方法可以帮助我们创建和管理复杂的对象图，将我们从大量繁琐的手动依赖管理工作中解放出来。
 
 ```cpp
 class ctor {
@@ -106,7 +121,26 @@ retq
 </table>
 </p>
 
-#### Quick guide - Bind interfaces
+#### Quick guide - Bind interfaces（绑定接口）
+Boost.DI库允许你在创建注入器（injector）时定义一些**绑定规则**，这些规则告诉注入器当需要创建特定接口或类的实例时，应该怎样去创建它。
+
+这是通过`di::bind<Interface>().to<Implementation>()`形式的语句来完成的。我们会将一个抽象类型（如接口或基类）绑定到一个具体的实现类型。这样，当注入器需要创建一个指定的抽象类型对象时，会创建绑定的实现类型的实例。
+
+例如，假设我们有一个接口`ICar`和两个实现这个接口的类:`Sedan`和`Truck`。如果我们想在请求`ICar`时获取`Sedan`类的实例，我们可以构造一个注入器并绑定这个接口：
+
+```cpp
+auto injector = boost::di::make_injector(
+    di::bind<ICar>().to<Sedan>()
+);
+```
+
+随后，当我们使用`create()`方法请求一个`ICar`实例时，注入器会给我们一个`Sedan`的实例：
+
+```cpp
+auto car = injector.create<std::unique_ptr<ICar>>();
+```
+
+这种将接口或基类与其实现类型的绑定功能，非常重要，它使得在保持高层代码不变的情况下，可以随时更改或者调整底层的实现，这就是所谓的依赖反转原则。因此，绑定接口在依赖注入模式，甚至在整个面向对象编程中都起着关键的作用。
 
 ```cpp
 struct interface {
@@ -178,6 +212,22 @@ retq
 </p>
 
 #### Quick guide - Bind templates
+Boost.DI 也可以处理模板类型的绑定。当你有一组使用了模板的类型时，这种特性使得你能够更加灵活的处理这些类型之间的依赖关系。
+
+假设你有一个模板类，如接口 `IProcessor<T>`，你可以用 Boost.DI 绑定不同的实现到模板的不同实例，如将 `StringProcessor` 绑定到 `IProcessor<std::string>`，将 `IntProcessor`  绑定到 `IProcessor<int>`：
+
+```cpp
+auto injector = di::make_injector(
+    di::bind< IProcessor<std::string> >().to< StringProcessor >(),
+    di::bind< IProcessor<int> >().to< IntProcessor >()
+);
+```
+
+在这个例子中，当注入器需要一个 `IProcessor<std::string>` 或 `IProcessor<int>` 实例时，它就会创建一个 `StringProcessor` 或 `IntProcessor` 实例。
+
+此外，Boost.DI 也支持自动绑定模板。这意味着，如果你没有显式的为一个模板实例定义绑定规则，Boost.DI 会尝试为该模板实例自动创建一个对象。这种行为可以通过提供特定的策略来定制。
+
+总的来说，绑定模板的功能在许多情况下都相当有用，例如，当你正在处理一个有很多模板类的大型代码库，或者你想在运行时动态的决定使用哪个模板实例时。
 
 ```cpp
 template<class ErrorPolicy = class TErrorPolicy>
@@ -257,6 +307,24 @@ retq
 </p>
 
 #### Quick guide - Bind concepts
+在 Boost.DI 中，"binding concepts" 概念主要是绑定语法，用于把接口或抽象类和具体类关联起来。
+
+不过，那样的表述涉及 C++ 的 Concepts 特性，这个特性主要用于约束模板参数的类型。而在 Boost.DI 库中，我们通常不显式地对“绑定概念（Concepts）”进行操作，这可能会导致一些混淆。
+
+如果你的问题是关于在 Boost.DI 中如何操作类似于 C++ Concepts 这样的抽象概念的，那么应该注意 Boost.DI 的绑定语法同样适用于模板化的代码。例如：
+
+```cpp
+template <typename T>
+di::injector<T> get_injector() {
+    return di::make_injector(
+        di::bind<Interface<T>>().to<Implementation<T>>()
+    );
+}
+```
+
+在上例中，我们创建了一个模板函数 `get_injector`，这个函数返回一个依赖注入器。这个注入器是根据类型 `T` 来配置的，将 `Interface<T>` 绑定到 `Implementation<T>`。因此，对于不同的 `T` 类型，我们可能获取到不同配置的注入器。
+
+总结一下，Boost.DI 通过使用基于模板的绑定语法，提供了一种在模板代码中绑定类型的方式，这在某种程度上和 C++ 的 Concepts 特性有类似的效果。
 
 ```cpp
 struct Streamable {
